@@ -1,0 +1,854 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>🦐 SHRIMP CATCHER - Club Edition</title>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Press Start 2P', cursive;
+            background: radial-gradient(ellipse at center, #1a0a2e 0%, #0d0015 100%);
+            min-height: 100vh;
+            overflow: hidden;
+            color: #fff;
+        }
+
+        /* Scanlines overlay */
+        body::after {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: repeating-linear-gradient(
+                transparent 0px,
+                transparent 2px,
+                rgba(0, 0, 0, 0.1) 2px,
+                rgba(0, 0, 0, 0.1) 4px
+            );
+            pointer-events: none;
+            z-index: 1000;
+        }
+
+        /* Stars background */
+        .stars {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+        }
+
+        .star {
+            position: absolute;
+            width: 4px;
+            height: 4px;
+            background: #fff;
+            border-radius: 50%;
+            animation: twinkle 1.5s ease-in-out infinite;
+        }
+
+        @keyframes twinkle {
+            0%, 100% { opacity: 0.3; transform: scale(1); }
+            50% { opacity: 1; transform: scale(1.2); }
+        }
+
+        /* Screen container */
+        .screen {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            padding: 20px;
+            z-index: 10;
+        }
+
+        .screen.active {
+            display: flex;
+        }
+
+        /* Neon text effects */
+        .neon-pink {
+            color: #ff00ff;
+            text-shadow: 0 0 5px #ff00ff, 0 0 10px #ff00ff, 0 0 20px #ff00ff, 0 0 40px #ff00ff;
+        }
+
+        .neon-cyan {
+            color: #00ffff;
+            text-shadow: 0 0 5px #00ffff, 0 0 10px #00ffff, 0 0 20px #00ffff;
+        }
+
+        .neon-yellow {
+            color: #ffff00;
+            text-shadow: 0 0 5px #ffff00, 0 0 10px #ffff00, 0 0 20px #ffff00;
+        }
+
+        .neon-green {
+            color: #00ff00;
+            text-shadow: 0 0 5px #00ff00, 0 0 10px #00ff00, 0 0 20px #00ff00;
+        }
+
+        /* Title */
+        .title {
+            font-size: clamp(1.2rem, 4vw, 2.5rem);
+            margin-bottom: 10px;
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        .subtitle {
+            font-size: clamp(0.6rem, 2vw, 1rem);
+            margin-bottom: 40px;
+            color: #00ffff;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+
+        /* Instructions */
+        .instructions {
+            font-size: clamp(0.5rem, 1.5vw, 0.8rem);
+            line-height: 2;
+            text-align: center;
+            margin-bottom: 40px;
+            max-width: 600px;
+        }
+
+        /* Buttons */
+        .btn {
+            font-family: 'Press Start 2P', cursive;
+            font-size: clamp(0.6rem, 2vw, 1rem);
+            padding: 15px 30px;
+            background: linear-gradient(180deg, #ff00ff 0%, #aa00aa 100%);
+            border: 4px solid #ff88ff;
+            color: #fff;
+            cursor: pointer;
+            text-transform: uppercase;
+            transition: all 0.2s;
+            margin: 10px;
+        }
+
+        .btn:hover {
+            transform: scale(1.1);
+            box-shadow: 0 0 20px #ff00ff, 0 0 40px #ff00ff;
+        }
+
+        .btn:active {
+            transform: scale(0.95);
+        }
+
+        /* Input */
+        .name-input {
+            font-family: 'Press Start 2P', cursive;
+            font-size: clamp(0.8rem, 2vw, 1.2rem);
+            padding: 15px 20px;
+            background: #1a0a2e;
+            border: 4px solid #00ffff;
+            color: #00ffff;
+            text-align: center;
+            width: 100%;
+            max-width: 400px;
+            margin-bottom: 30px;
+        }
+
+        .name-input:focus {
+            outline: none;
+            box-shadow: 0 0 20px #00ffff;
+        }
+
+        .name-input::placeholder {
+            color: #006666;
+        }
+
+        /* Game UI */
+        #game-screen {
+            padding: 0;
+        }
+
+        .game-ui {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            display: flex;
+            justify-content: space-between;
+            padding: 15px 20px;
+            font-size: clamp(0.6rem, 2vw, 1rem);
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 100;
+        }
+
+        #game-canvas {
+            display: block;
+            max-width: 100%;
+            max-height: 100%;
+            cursor: crosshair;
+        }
+
+        /* End screen */
+        .score-display {
+            font-size: clamp(1rem, 3vw, 1.8rem);
+            margin: 20px 0;
+        }
+
+        .leaderboard {
+            background: rgba(0, 0, 0, 0.5);
+            border: 3px solid #ff00ff;
+            padding: 20px;
+            margin: 20px 0;
+            max-width: 400px;
+            width: 100%;
+        }
+
+        .leaderboard h3 {
+            font-size: clamp(0.6rem, 1.8vw, 0.9rem);
+            margin-bottom: 15px;
+            color: #ff00ff;
+        }
+
+        .leaderboard-entry {
+            display: flex;
+            justify-content: space-between;
+            font-size: clamp(0.4rem, 1.2vw, 0.7rem);
+            padding: 8px 0;
+            border-bottom: 1px solid #333;
+        }
+
+        .leaderboard-entry.highlight {
+            color: #ffff00;
+            background: rgba(255, 255, 0, 0.1);
+        }
+
+        .invitation {
+            background: linear-gradient(180deg, rgba(255,0,255,0.2) 0%, rgba(0,255,255,0.2) 100%);
+            border: 3px solid #00ffff;
+            padding: 25px;
+            margin: 20px 0;
+            max-width: 450px;
+            width: 100%;
+            text-align: center;
+        }
+
+        .invitation h2 {
+            font-size: clamp(0.7rem, 2vw, 1.1rem);
+            margin-bottom: 20px;
+            animation: rainbow 3s linear infinite;
+        }
+
+        @keyframes rainbow {
+            0% { color: #ff00ff; }
+            33% { color: #00ffff; }
+            66% { color: #ffff00; }
+            100% { color: #ff00ff; }
+        }
+
+        .invitation p {
+            font-size: clamp(0.5rem, 1.5vw, 0.8rem);
+            line-height: 2.5;
+            margin: 10px 0;
+        }
+
+        .invitation .detail {
+            font-size: clamp(0.6rem, 1.8vw, 0.9rem);
+        }
+
+        /* Shrimp emoji styling */
+        .shrimp-icon {
+            font-size: 1.5em;
+            display: inline-block;
+            animation: wiggle 0.5s ease-in-out infinite;
+        }
+
+        @keyframes wiggle {
+            0%, 100% { transform: rotate(-5deg); }
+            50% { transform: rotate(5deg); }
+        }
+
+        /* Loading */
+        .loading {
+            font-size: 0.8rem;
+            color: #888;
+            animation: blink 1s infinite;
+        }
+
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.3; }
+        }
+
+        /* Catch animation */
+        .catch-popup {
+            position: fixed;
+            font-size: 2rem;
+            pointer-events: none;
+            animation: catchPop 0.5s ease-out forwards;
+            z-index: 200;
+        }
+
+        @keyframes catchPop {
+            0% { transform: scale(1); opacity: 1; }
+            100% { transform: scale(2) translateY(-30px); opacity: 0; }
+        }
+
+        /* Mobile adjustments */
+        @media (max-width: 600px) {
+            .instructions {
+                line-height: 2.5;
+            }
+
+            .game-ui {
+                padding: 10px 15px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Stars background -->
+    <div class="stars" id="stars"></div>
+
+    <!-- INTRO SCREEN -->
+    <div class="screen active" id="intro-screen">
+        <div class="title neon-pink">
+            <span class="shrimp-icon">🦐</span> SHRIMP CATCHER <span class="shrimp-icon">🦐</span>
+        </div>
+        <div class="subtitle">~ CLUB EDITION ~</div>
+
+        <div class="instructions">
+            Vang zoveel mogelijk shrimps<br>
+            met je hengel in 60 seconden!<br><br>
+            <span class="neon-cyan">Klik of tap om je hengel<br>uit te werpen.</span><br><br>
+            <span class="neon-yellow">Raak de shrimps om punten te scoren!</span>
+        </div>
+
+        <button class="btn" onclick="showNameScreen()">START GAME</button>
+    </div>
+
+    <!-- NAME INPUT SCREEN -->
+    <div class="screen" id="name-screen">
+        <div class="title neon-cyan" style="font-size: clamp(0.8rem, 2.5vw, 1.5rem);">WAT IS JE NAAM?</div>
+        <br><br>
+        <input type="text" class="name-input" id="player-name" placeholder="Jouw naam..." maxlength="15" autocomplete="off">
+        <button class="btn" onclick="startGame()">VERDER</button>
+    </div>
+
+    <!-- GAME SCREEN -->
+    <div class="screen" id="game-screen">
+        <div class="game-ui">
+            <div class="neon-yellow">SCORE: <span id="score">0</span></div>
+            <div class="neon-cyan">TIME: <span id="timer">1:00</span></div>
+        </div>
+        <canvas id="game-canvas"></canvas>
+    </div>
+
+    <!-- END SCREEN -->
+    <div class="screen" id="end-screen">
+        <div class="title neon-pink" style="font-size: clamp(1rem, 3vw, 2rem);">GAME OVER!</div>
+
+        <div class="score-display neon-yellow">
+            Je scoorde: <span id="final-score">0</span> shrimps! 🦐
+        </div>
+
+        <div class="leaderboard">
+            <h3 class="neon-pink">═══ RANGLIJST ═══</h3>
+            <div id="leaderboard-entries">
+                <div class="loading">Laden...</div>
+            </div>
+        </div>
+
+        <div class="invitation">
+            <h2>🎉 JE BENT UITGENODIGD! 🎉</h2>
+            <p><span class="neon-pink">Fee & Leon</span> worden jarig!</p>
+            <p class="detail">📅 <span class="neon-cyan">13 februari</span></p>
+            <p class="detail">🕢 <span class="neon-cyan">20:30</span></p>
+            <p class="detail">📍 <span class="neon-cyan">De Kleine Bes</span></p>
+            <br>
+            <p class="neon-green">Tot dan! 🦐🎉</p>
+        </div>
+
+        <button class="btn" onclick="playAgain()">SPEEL OPNIEUW</button>
+    </div>
+
+    <script>
+        // ============================================
+        // CONFIGURATION
+        // ============================================
+
+        // JSONblob configuration for shared leaderboard
+        const JSONBLOB_ID = '019c33da-5dff-70d1-877c-fd3b8483b528';
+        const JSONBLOB_API = `https://jsonblob.com/api/jsonBlob/${JSONBLOB_ID}`;
+
+        // Game settings
+        const GAME_DURATION = 60; // seconds
+        const SHRIMP_COUNT = 8;
+        const SHRIMP_SPEED = 2;
+        const CATCH_RADIUS = 50;
+
+        // ============================================
+        // GAME STATE
+        // ============================================
+
+        let playerName = '';
+        let score = 0;
+        let timeLeft = GAME_DURATION;
+        let gameRunning = false;
+        let shrimps = [];
+        let canvas, ctx;
+        let canvasWidth, canvasHeight;
+        let hookX, hookY;
+        let hookActive = false;
+        let hookTargetX, hookTargetY;
+        let hookProgress = 0;
+        let gameInterval;
+        let timerInterval;
+
+        // ============================================
+        // STARS BACKGROUND
+        // ============================================
+
+        function createStars() {
+            const starsContainer = document.getElementById('stars');
+            for (let i = 0; i < 50; i++) {
+                const star = document.createElement('div');
+                star.className = 'star';
+                star.style.left = Math.random() * 100 + '%';
+                star.style.top = Math.random() * 100 + '%';
+                star.style.animationDelay = Math.random() * 2 + 's';
+                star.style.width = (Math.random() * 3 + 2) + 'px';
+                star.style.height = star.style.width;
+                starsContainer.appendChild(star);
+            }
+        }
+
+        // ============================================
+        // SCREEN MANAGEMENT
+        // ============================================
+
+        function showScreen(screenId) {
+            document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+            document.getElementById(screenId).classList.add('active');
+        }
+
+        function showNameScreen() {
+            showScreen('name-screen');
+            document.getElementById('player-name').focus();
+        }
+
+        // ============================================
+        // GAME INITIALIZATION
+        // ============================================
+
+        function startGame() {
+            playerName = document.getElementById('player-name').value.trim() || 'Anoniem';
+
+            showScreen('game-screen');
+
+            // Setup canvas
+            canvas = document.getElementById('game-canvas');
+            ctx = canvas.getContext('2d');
+
+            resizeCanvas();
+            window.addEventListener('resize', resizeCanvas);
+
+            // Input handlers
+            canvas.addEventListener('click', handleClick);
+            canvas.addEventListener('touchstart', handleTouch, { passive: false });
+
+            // Reset game state
+            score = 0;
+            timeLeft = GAME_DURATION;
+            hookActive = false;
+            gameRunning = true;
+
+            document.getElementById('score').textContent = score;
+            updateTimerDisplay();
+
+            // Spawn shrimps
+            spawnShrimps();
+
+            // Start game loop
+            gameLoop();
+
+            // Start timer
+            timerInterval = setInterval(() => {
+                timeLeft--;
+                updateTimerDisplay();
+                if (timeLeft <= 0) {
+                    endGame();
+                }
+            }, 1000);
+        }
+
+        function resizeCanvas() {
+            const ui = document.querySelector('.game-ui');
+            const uiHeight = ui ? ui.offsetHeight : 50;
+
+            canvasWidth = window.innerWidth;
+            canvasHeight = window.innerHeight - uiHeight;
+
+            canvas.width = canvasWidth;
+            canvas.height = canvasHeight;
+            canvas.style.marginTop = uiHeight + 'px';
+        }
+
+        // ============================================
+        // SHRIMP MANAGEMENT
+        // ============================================
+
+        function spawnShrimps() {
+            shrimps = [];
+            for (let i = 0; i < SHRIMP_COUNT; i++) {
+                shrimps.push(createShrimp());
+            }
+        }
+
+        function createShrimp() {
+            return {
+                x: Math.random() * (canvasWidth - 60) + 30,
+                y: Math.random() * (canvasHeight - 60) + 30,
+                vx: (Math.random() - 0.5) * SHRIMP_SPEED * 2,
+                vy: (Math.random() - 0.5) * SHRIMP_SPEED * 2,
+                size: 30 + Math.random() * 15,
+                rotation: Math.random() * Math.PI * 2,
+                wiggle: Math.random() * Math.PI * 2
+            };
+        }
+
+        function updateShrimps() {
+            shrimps.forEach(shrimp => {
+                // Move
+                shrimp.x += shrimp.vx;
+                shrimp.y += shrimp.vy;
+
+                // Wiggle
+                shrimp.wiggle += 0.2;
+                shrimp.rotation = Math.sin(shrimp.wiggle) * 0.3;
+
+                // Bounce off walls
+                if (shrimp.x < 20 || shrimp.x > canvasWidth - 20) {
+                    shrimp.vx *= -1;
+                    shrimp.x = Math.max(20, Math.min(canvasWidth - 20, shrimp.x));
+                }
+                if (shrimp.y < 20 || shrimp.y > canvasHeight - 20) {
+                    shrimp.vy *= -1;
+                    shrimp.y = Math.max(20, Math.min(canvasHeight - 20, shrimp.y));
+                }
+
+                // Random direction change
+                if (Math.random() < 0.01) {
+                    shrimp.vx += (Math.random() - 0.5) * SHRIMP_SPEED;
+                    shrimp.vy += (Math.random() - 0.5) * SHRIMP_SPEED;
+
+                    // Limit speed
+                    const speed = Math.sqrt(shrimp.vx * shrimp.vx + shrimp.vy * shrimp.vy);
+                    if (speed > SHRIMP_SPEED * 2) {
+                        shrimp.vx = (shrimp.vx / speed) * SHRIMP_SPEED * 2;
+                        shrimp.vy = (shrimp.vy / speed) * SHRIMP_SPEED * 2;
+                    }
+                }
+            });
+        }
+
+        function drawShrimps() {
+            shrimps.forEach(shrimp => {
+                ctx.save();
+                ctx.translate(shrimp.x, shrimp.y);
+                ctx.rotate(shrimp.rotation);
+                ctx.font = shrimp.size + 'px Arial';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText('🦐', 0, 0);
+                ctx.restore();
+            });
+        }
+
+        // ============================================
+        // HOOK / FISHING
+        // ============================================
+
+        function handleClick(e) {
+            if (!gameRunning || hookActive) return;
+
+            const rect = canvas.getBoundingClientRect();
+            castHook(e.clientX - rect.left, e.clientY - rect.top);
+        }
+
+        function handleTouch(e) {
+            e.preventDefault();
+            if (!gameRunning || hookActive) return;
+
+            const rect = canvas.getBoundingClientRect();
+            const touch = e.touches[0];
+            castHook(touch.clientX - rect.left, touch.clientY - rect.top);
+        }
+
+        function castHook(x, y) {
+            hookActive = true;
+            hookTargetX = x;
+            hookTargetY = y;
+            hookProgress = 0;
+            hookX = canvasWidth / 2;
+            hookY = 0;
+        }
+
+        function updateHook() {
+            if (!hookActive) return;
+
+            hookProgress += 0.1;
+
+            if (hookProgress < 1) {
+                // Moving to target
+                hookX = canvasWidth / 2 + (hookTargetX - canvasWidth / 2) * hookProgress;
+                hookY = hookTargetY * hookProgress;
+            } else if (hookProgress < 2) {
+                // Check for catch at peak
+                if (hookProgress < 1.1) {
+                    checkCatch();
+                }
+                // Returning
+                const returnProgress = hookProgress - 1;
+                hookX = hookTargetX + (canvasWidth / 2 - hookTargetX) * returnProgress;
+                hookY = hookTargetY * (1 - returnProgress);
+            } else {
+                hookActive = false;
+            }
+        }
+
+        function drawHook() {
+            if (!hookActive) {
+                // Draw rod at top center
+                ctx.strokeStyle = '#8B4513';
+                ctx.lineWidth = 4;
+                ctx.beginPath();
+                ctx.moveTo(canvasWidth / 2, 0);
+                ctx.lineTo(canvasWidth / 2, 30);
+                ctx.stroke();
+                return;
+            }
+
+            // Draw fishing line
+            ctx.strokeStyle = '#aaa';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(canvasWidth / 2, 0);
+            ctx.lineTo(hookX, hookY);
+            ctx.stroke();
+
+            // Draw hook
+            ctx.font = '30px Arial';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText('🎣', hookX, hookY);
+        }
+
+        function checkCatch() {
+            for (let i = shrimps.length - 1; i >= 0; i--) {
+                const shrimp = shrimps[i];
+                const dx = shrimp.x - hookX;
+                const dy = shrimp.y - hookY;
+                const distance = Math.sqrt(dx * dx + dy * dy);
+
+                if (distance < CATCH_RADIUS) {
+                    // Caught!
+                    score++;
+                    document.getElementById('score').textContent = score;
+
+                    // Show catch animation
+                    showCatchPopup(shrimp.x, shrimp.y);
+
+                    // Remove and respawn shrimp
+                    shrimps.splice(i, 1);
+                    setTimeout(() => {
+                        if (gameRunning) {
+                            shrimps.push(createShrimp());
+                        }
+                    }, 500);
+
+                    break; // Only catch one per cast
+                }
+            }
+        }
+
+        function showCatchPopup(x, y) {
+            const popup = document.createElement('div');
+            popup.className = 'catch-popup';
+            popup.textContent = '+1 🦐';
+            popup.style.left = x + 'px';
+            popup.style.top = (y + canvas.offsetTop) + 'px';
+            document.body.appendChild(popup);
+
+            setTimeout(() => popup.remove(), 500);
+        }
+
+        // ============================================
+        // GAME LOOP
+        // ============================================
+
+        function gameLoop() {
+            if (!gameRunning) return;
+
+            // Clear canvas
+            ctx.clearRect(0, 0, canvasWidth, canvasHeight);
+
+            // Draw water effect
+            ctx.fillStyle = 'rgba(0, 50, 100, 0.3)';
+            ctx.fillRect(0, 0, canvasWidth, canvasHeight);
+
+            // Update and draw
+            updateShrimps();
+            drawShrimps();
+            updateHook();
+            drawHook();
+
+            requestAnimationFrame(gameLoop);
+        }
+
+        function updateTimerDisplay() {
+            const minutes = Math.floor(timeLeft / 60);
+            const seconds = timeLeft % 60;
+            document.getElementById('timer').textContent =
+                minutes + ':' + (seconds < 10 ? '0' : '') + seconds;
+        }
+
+        // ============================================
+        // GAME END
+        // ============================================
+
+        function endGame() {
+            gameRunning = false;
+            clearInterval(timerInterval);
+
+            document.getElementById('final-score').textContent = score;
+            showScreen('end-screen');
+
+            // Save and load leaderboard
+            saveScore().then(loadLeaderboard);
+        }
+
+        function playAgain() {
+            showScreen('name-screen');
+            document.getElementById('player-name').value = playerName;
+            document.getElementById('player-name').focus();
+        }
+
+        // ============================================
+        // LEADERBOARD (JSONblob)
+        // ============================================
+
+        async function saveScore() {
+            try {
+                // Get current scores
+                const response = await fetch(JSONBLOB_API);
+
+                let data = { scores: [] };
+                if (response.ok) {
+                    data = await response.json();
+                    if (!data.scores) data = { scores: [] };
+                }
+
+                // Add new score
+                data.scores.push({
+                    name: playerName,
+                    score: score,
+                    date: new Date().toISOString()
+                });
+
+                // Sort and keep top 50
+                data.scores.sort((a, b) => b.score - a.score);
+                data.scores = data.scores.slice(0, 50);
+
+                // Save back
+                await fetch(JSONBLOB_API, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(data)
+                });
+
+            } catch (err) {
+                console.error('Failed to save score:', err);
+            }
+        }
+
+        async function loadLeaderboard() {
+            const container = document.getElementById('leaderboard-entries');
+
+            try {
+                const response = await fetch(JSONBLOB_API);
+
+                if (!response.ok) throw new Error('Failed to load');
+
+                const json = await response.json();
+                const scores = json.scores || [];
+
+                if (scores.length === 0) {
+                    container.innerHTML = '<div style="text-align: center; color: #888;">Nog geen scores!</div>';
+                    return;
+                }
+
+                // Find player's position
+                let playerRank = -1;
+                for (let i = 0; i < scores.length; i++) {
+                    if (scores[i].name === playerName && scores[i].score === score) {
+                        playerRank = i;
+                        break;
+                    }
+                }
+
+                // Show top 10
+                let html = '';
+                const top10 = scores.slice(0, 10);
+                top10.forEach((entry, index) => {
+                    const isPlayer = index === playerRank;
+                    html += `
+                        <div class="leaderboard-entry ${isPlayer ? 'highlight' : ''}">
+                            <span>${index + 1}. ${entry.name}</span>
+                            <span>${entry.score} 🦐 ${isPlayer ? '←' : ''}</span>
+                        </div>
+                    `;
+                });
+
+                container.innerHTML = html;
+
+            } catch (err) {
+                console.error('Failed to load leaderboard:', err);
+                container.innerHTML = `
+                    <div class="leaderboard-entry highlight">
+                        <span>1. ${playerName}</span>
+                        <span>${score} 🦐</span>
+                    </div>
+                `;
+            }
+        }
+
+        // ============================================
+        // INITIALIZATION
+        // ============================================
+
+        // Create stars on load
+        createStars();
+
+        // Handle Enter key in name input
+        document.getElementById('player-name').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                startGame();
+            }
+        });
+    </script>
+</body>
+</html>
