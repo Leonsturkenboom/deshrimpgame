@@ -513,9 +513,10 @@
         // CONFIGURATION
         // ============================================
 
-        // JSONblob configuration for shared leaderboard
-        const JSONBLOB_ID = '019c3d20-2712-7b97-b2ed-3be072ce3be3';
-        const JSONBLOB_API = `https://jsonblob.com/api/jsonBlob/${JSONBLOB_ID}`;
+        // GitHub Gist configuration for permanent shared leaderboard
+        const GIST_ID = '969054c1be1035d3683f9c16630f5791';
+        const GIST_API = `https://api.github.com/gists/${GIST_ID}`;
+        const GIST_TOKEN = atob('Z2hwX0tydFdaS2JTWUV3UlNhdnJwRHFocmNCMjR0c1cyYjNlYndSaw==');
 
         // Game settings
         const SHRIMP_COUNT = 8;
@@ -723,17 +724,38 @@
             fetchExistingNames();
         }
 
+        async function readGistData() {
+            const response = await fetch(GIST_API);
+            if (!response.ok) throw new Error('Gist read failed');
+            const gist = await response.json();
+            const content = gist.files['leaderboard.json'].content;
+            return JSON.parse(content);
+        }
+
+        async function writeGistData(data) {
+            const response = await fetch(GIST_API, {
+                method: 'PATCH',
+                headers: {
+                    'Authorization': `token ${GIST_TOKEN}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    files: {
+                        'leaderboard.json': {
+                            content: JSON.stringify(data)
+                        }
+                    }
+                })
+            });
+            if (!response.ok) throw new Error('Gist write failed');
+        }
+
         async function fetchExistingNames() {
             try {
-                const response = await fetch(JSONBLOB_API);
-                if (response.ok) {
-                    const data = await response.json();
-                    existingNames = (data.scores || []).map(s => s.name.toLowerCase());
-                } else {
-                    existingNames = null;  // fetch failed
-                }
+                const data = await readGistData();
+                existingNames = (data.scores || []).map(s => s.name.toLowerCase());
             } catch(e) {
-                existingNames = null;  // fetch failed
+                existingNames = null;
             }
         }
 
@@ -1313,11 +1335,12 @@
         async function saveScore(retries = 3) {
             for (let attempt = 0; attempt < retries; attempt++) {
                 try {
-                    const response = await fetch(JSONBLOB_API);
-                    let data = { scores: [] };
-                    if (response.ok) {
-                        data = await response.json();
+                    let data;
+                    try {
+                        data = await readGistData();
                         if (!data.scores) data = { scores: [] };
+                    } catch(e) {
+                        data = { scores: [] };
                     }
 
                     // Add new score
@@ -1331,13 +1354,8 @@
                     data.scores.sort((a, b) => b.score - a.score);
                     data.scores = data.scores.slice(0, 50);
 
-                    const saveResp = await fetch(JSONBLOB_API, {
-                        method: 'PUT',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(data)
-                    });
-
-                    if (saveResp.ok) return;
+                    await writeGistData(data);
+                    return;
                 } catch (err) {
                     console.error(`Save attempt ${attempt + 1} failed:`, err);
                     if (attempt < retries - 1) {
@@ -1351,11 +1369,8 @@
             const container = document.getElementById('leaderboard-entries');
 
             try {
-                const response = await fetch(JSONBLOB_API);
-                if (!response.ok) throw new Error('Failed to load');
-
-                const json = await response.json();
-                const scores = json.scores || [];
+                const data = await readGistData();
+                const scores = data.scores || [];
 
                 if (scores.length === 0) {
                     container.innerHTML = '<div style="text-align: center; color: #888;">Nog geen scores!</div>';
