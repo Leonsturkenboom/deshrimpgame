@@ -725,8 +725,13 @@
         }
 
         async function readGistData() {
-            const response = await fetch(GIST_API);
-            if (!response.ok) throw new Error('Gist read failed');
+            const response = await fetch(GIST_API, {
+                headers: {
+                    'Authorization': `token ${GIST_TOKEN}`,
+                    'Accept': 'application/vnd.github.v3+json'
+                }
+            });
+            if (!response.ok) throw new Error('Gist read failed: ' + response.status);
             const gist = await response.json();
             const content = gist.files['leaderboard.json'].content;
             return JSON.parse(content);
@@ -1329,7 +1334,7 @@
         }
 
         // ============================================
-        // LEADERBOARD (JSONblob)
+        // LEADERBOARD (GitHub Gist)
         // ============================================
 
         async function saveScore(retries = 3) {
